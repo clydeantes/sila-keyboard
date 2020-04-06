@@ -1,6 +1,7 @@
 import 'package:custom_keyboard/numeric_keyboard.dart';
 import 'package:flutter/material.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
+import 'dart:async';
 
 void main() => runApp(MyApp());
 
@@ -24,10 +25,37 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
   final FocusNode _focusNode = FocusNode();
 
   final ValueNotifier<String> _notifier = ValueNotifier<String>("");
+
+  bool _isBlue = true;
+
+  bool _isTyping = false;
+
+  List<Future<dynamic>> futures = [];
+
+  Timer _timer;
+
+  void _initializeTimer() {
+    setState(() {
+      _isTyping = true;
+    });
+
+    if (_timer != null) {
+      _timer.cancel();
+    }
+
+    _timer = Timer(const Duration(milliseconds: 500), () => _resetTimer());
+  }
+
+   void _resetTimer() {
+     setState(() {
+       _isTyping = false;
+
+       _isBlue = false;
+     });
+   }
 
   KeyboardActionsConfig _buildConfig(BuildContext context) {
     return KeyboardActionsConfig(
@@ -39,6 +67,9 @@ class _MyHomePageState extends State<MyHomePage> {
           focusNode: _focusNode,
           displayActionBar: false,
           footerBuilder: (_) => CharKeyboard(
+            onCallback: () async {
+              _initializeTimer();
+            },
             focusNode: _focusNode,
             notifier: _notifier,
           ),
@@ -47,58 +78,81 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  bool _hasFocus = false;
-
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
 
     _focusNode.addListener(() {
-      _hasFocus = _focusNode.hasFocus;
+      _isBlue = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Keyboard"),
-      ),
-      body: KeyboardActions(
-        config: _buildConfig(context),
-        child: Center(
-          child: KeyboardCustomInput(
-            focusNode: _focusNode,
-            notifier: _notifier,
-            builder: (context, val, hasFocus) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  val != "" ? Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text(
-                      val,
-                      style: TextStyle(
-                          fontFamily: 'CustomFont',
-                          fontSize: 44.0
-                      )
-                    ),
-                  ) : Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text("Say Something",
-                        style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 28.0
-                        )),
-                  ),
-                  Divider(color: _hasFocus ? Colors.blue : Colors.grey, thickness: 2.0)
-                ],
-              );
-            }
-          )
-        )
-      )
-    );
+        appBar: AppBar(
+          title: Text("Keyboard"),
+        ),
+        body: KeyboardActions(
+            config: _buildConfig(context),
+            child: Center(
+                child: KeyboardCustomInput(
+                    focusNode: _focusNode,
+                    notifier: _notifier,
+                    builder: (context, val, hasFocus) {
+                      Color color;
+
+                      if (hasFocus) {
+                        if (_isTyping) {
+                          color = Colors.blue[600];
+                        } else {
+                          if (_isBlue) {
+                            color = Colors.blue[600];
+                          } else {
+                            color = Colors.white;
+                          }
+                        }
+                      } else {
+                        color = Colors.white;
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Padding(
+                            padding:
+                                const EdgeInsets.symmetric(horizontal: 8.0),
+                            child: Stack(
+                              alignment: AlignmentDirectional.centerStart,
+                              children: <Widget>[
+                                Text.rich(TextSpan(text: val, children: <InlineSpan>[
+                                  WidgetSpan(alignment: PlaceholderAlignment.middle, child: AnimatedContainer(
+                                      duration: Duration(milliseconds: 500),
+                                      height: 28.0,
+                                      width: 2.0,
+                                      color: color,
+                                      onEnd: () {
+                                        setState(() {
+                                          _isBlue = !_isBlue;
+                                        });
+                                      })),
+                                ]),
+                                    style: TextStyle(
+                                        fontFamily: "CustomFont",
+                                        fontSize: 40.0)),
+                                Text(val == "" ? "Say something" : "",
+                                    style: TextStyle(
+                                        color: Colors.grey[500],
+                                        fontSize: 28.0)),
+                              ],
+                            ),
+                          ),
+                          Divider(
+                              thickness: 2.0,
+                              color: hasFocus ? Colors.blue[600] : Colors.grey)
+                        ],
+                      );
+                    }))));
   }
 }
