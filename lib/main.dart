@@ -1,9 +1,12 @@
 import 'package:custom_keyboard/numeric_keyboard.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:keyboard_actions/keyboard_actions.dart';
 import 'dart:async';
 
-void main() => runApp(MyApp());
+import 'package:overlay_support/overlay_support.dart';
+
+void main() => runApp(OverlaySupport(child: MyApp()));
 
 class MyApp extends StatelessWidget {
   @override
@@ -24,10 +27,11 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<MyHomePage> with KeyboardCustomPanelMixin<String> {
   final FocusNode _focusNode = FocusNode();
 
-  final ValueNotifier<String> _notifier = ValueNotifier<String>("");
+  // has to be notifier because the class implements KeyboardCustomPanelMixin
+  final ValueNotifier<String> notifier = ValueNotifier<String>("");
 
   bool _isBlue = true;
 
@@ -36,6 +40,8 @@ class _MyHomePageState extends State<MyHomePage> {
   List<Future<dynamic>> futures = [];
 
   Timer _timer;
+
+  final GlobalKey<ScaffoldState> _key = GlobalKey<ScaffoldState>();
 
   void _initializeTimer() {
     setState(() {
@@ -71,7 +77,7 @@ class _MyHomePageState extends State<MyHomePage> {
               _initializeTimer();
             },
             focusNode: _focusNode,
-            notifier: _notifier,
+            notifier: notifier,
           ),
         ),
       ],
@@ -91,6 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+        key: _key,
         appBar: AppBar(
           title: Text("Keyboard"),
         ),
@@ -99,7 +106,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Center(
                 child: KeyboardCustomInput(
                     focusNode: _focusNode,
-                    notifier: _notifier,
+                    notifier: notifier,
                     builder: (context, val, hasFocus) {
                       Color color;
 
@@ -120,35 +127,57 @@ class _MyHomePageState extends State<MyHomePage> {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Stack(
-                              alignment: AlignmentDirectional.centerStart,
-                              children: <Widget>[
-                                Text.rich(TextSpan(text: val, children: <InlineSpan>[
-                                  WidgetSpan(alignment: PlaceholderAlignment.middle, child: AnimatedContainer(
-                                      duration: Duration(milliseconds: 500),
-                                      height: 28.0,
-                                      width: 2.0,
-                                      color: color,
-                                      onEnd: () {
-                                        setState(() {
-                                          _isBlue = !_isBlue;
-                                        });
-                                      })),
-                                ]),
-                                    style: TextStyle(
-                                        fontFamily: "CustomFont",
-                                        fontSize: 40.0)),
-                                Text(val == "" ? "Say something" : "",
+                          Stack(
+                            alignment: AlignmentDirectional.centerStart,
+                            children: <Widget>[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Text(val == "" ? "Say something" : "",
                                     style: TextStyle(
                                         color: Colors.grey[500],
                                         fontSize: 28.0)),
-                              ],
-                            ),
+                              ),
+                              FlatButton(
+                                onPressed: () async {
+                                  if (!hasFocus) {
+                                    _focusNode.requestFocus();
+                                  } else {
+                                    print(1);
+                                    final data = await Clipboard.getData("text/plain");
+
+                                    final currentValue = notifier.value;
+                                    final temp = currentValue + data.text;
+                                    updateValue(temp);
+                                  }
+                                },
+                                onLongPress: () {
+                                  Clipboard.setData(ClipboardData(text: val));
+
+                                  showSimpleNotification(Text("Copied to clipboard!"));
+                                },
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text.rich(TextSpan(text: val, children: <InlineSpan>[
+                                    WidgetSpan(alignment: PlaceholderAlignment.middle, child: AnimatedContainer(
+                                        duration: Duration(milliseconds: 500),
+                                        height: 28.0,
+                                        width: 2.0,
+                                        color: color,
+                                        onEnd: () {
+                                          setState(() {
+                                            _isBlue = !_isBlue;
+                                          });
+                                        })),
+                                  ]),
+                                      style: TextStyle(
+                                          fontFamily: "CustomFont",
+                                          fontSize: 40.0)),
+                                ),
+                              )
+                            ],
                           ),
                           Divider(
+                              height: 0.0,
                               thickness: 2.0,
                               color: hasFocus ? Colors.blue[600] : Colors.grey)
                         ],

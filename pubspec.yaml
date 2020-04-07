@@ -26,6 +26,7 @@ dependencies:
   keyboard_actions: ^3.2.1
   intl: ^0.16.1
   material_design_icons_flutter: ^4.0.5045
+  overlay_support: ^1.0.3
 
 dev_dependencies:
   flutter_test:

@@ -8,6 +8,7 @@ class CharKeyboard extends StatefulWidget
     with KeyboardCustomPanelMixin<String>
     implements PreferredSizeWidget {
   @override
+  // Change the size of a keyboard
   Size get preferredSize => Size.fromHeight(250);
   final ValueNotifier<String> notifier;
   final FocusNode focusNode;
